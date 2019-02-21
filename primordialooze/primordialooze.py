@@ -52,10 +52,22 @@ class Simulation:
                          the fitness value for `population[i]`; `selected_agents` is an n-dimensional array
                          of shape (nagents_selected, *agent_shape), which must contain the selected agents.
                          `population` and `evaluations` are pre-sorted so that `population[0]`, corresponds
-                         to `evalutaion[0]` and has the highest evaluation value.
+                         to `evalutaion[0]` and has the highest evaluation value. Agents which are not selected
+                         are simply discarded, i.e., they will not appear in the next generation (unless randomly
+                         created as part of crossover/mutation).
                          When `None`, defaults to selecting the top ten percent.
-    - **crossoverfunc**:
-    - **mutationfunc**:
+    - **crossoverfunc**: Crossover function to use. Must have signature `crossoverfunc(agents) -> new_agents`,
+                         where `agents` is an n-dimensional array of shape (nselected_agents, *agent_shape),
+                         and where `new_agents` must be an n-dimensional array of shape (nagents, *agent_shape).
+                         This function is applied after the selection function is used to determine which
+                         agents will enter the new generation and this function is used exclusively on those
+                         selected agents. Typically, `new_agents` will constitute the entirety of the new generation,
+                         with one exception being if elitism is used (see below) and another exception being
+                         if the mutation function adds new individuals to the gene pool, rather than just mutating
+                         existing ones.
+                         If `None`, defaults to 2-point crossover used on randomly selected pairs from the
+                         breeding agents until `population` agents (or, if `elitismfunc` is None, `0.9 * population`).
+    - **mutationfunc**: The function to use to apply mutations to the gene pool.
     - **elitismfunc**: A function of signature `elitismfunc(generation_index) -> float in range [0.0, 1.0]`.
                        This function takes the index of the generation (0 for the first generation, 1 for the second, etc.)
                        and returns the fraction of top-performers to hold over as-is to the next generation.
@@ -63,10 +75,28 @@ class Simulation:
                        generation.
     - **nworkers**: The number of processes to use to parallelize the various functions. This will default to 0, which will
                     mean no parallelism at all. `None` will use the number of cores. Otherwise, must be an integer.
+    - **max_agents_per_generation**: The maximum agents to allow into a generation. If the selection, crossover, mutation,
+                                     and elitism functions are not handled properly, it is possible for the number of
+                                     agents to change per generation. While this may be desired in some circumstances, it
+                                     is often not. If this value is negative, we will allow the generations to grow to arbitrary
+                                     size. If it is nonzero, after selection, crossover, mutation, and elitism, we will
+                                     take all of the candidates as long as they do not number more than this value. If they do,
+                                     we take this many at random.
+                                     This value defaults to `None`, which means we use `population` as the max.
+    - **min_agents_per_generation**: The minimum agents to allow making a new generation. If the selection, crossover, mutation,
+                                     and elitism functions are not handled properly, it is possible for the number of
+                                     agents to change per generation. While this may be desired in some circumstances, it
+                                     is often not. If this value is negative or zero, we will allow the generations
+                                     to shrink to zero, after which the simulation will stop. If it is nonzero, after selection,
+                                     crossover, mutation, and elitism, we will cycle through the candidate agents in random
+                                     order, duplicating them until this value is met. Note that we attempt to spread out the
+                                     duplication evenly amongst all candidates.
+                                     This value defaults to `None`, which means we use `population` as the min.
     """
 
     def __init__(self, population, shape, fitnessfunc, *, seedfunc=None, selectionfunc=None,
-                    crossoverfunc=None, mutationfunc=None, elitismfunc=None, nworkers=0):
+                    crossoverfunc=None, mutationfunc=None, elitismfunc=None, nworkers=0,
+                    max_agents_per_generation=None, min_agents_per_generation=None):
         # Validate population
         if population <= 0:
             raise ValueError("Population must be > 0 but is {}".format(population))
