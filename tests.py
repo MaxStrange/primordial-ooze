@@ -12,9 +12,12 @@ class TestOoze(unittest.TestCase):
         """
         Merely test whether we can successfully instantiate a Simulation instance.
         """
-        _ = po.Simulation()
+        def fitnessfunc(agent):
+            return 0.0
 
-    def test_solve_conic(self):
+        _ = po.Simulation(100, (2,), fitnessfunc)
+
+    def test_solve_conic_with_defaults(self):
         """
         Test that we can solve a simple 2D upside-down parabola problem.
         """
@@ -27,7 +30,7 @@ class TestOoze(unittest.TestCase):
             return (-1.2 * x**2) - (0.75 * y**2) + 5
 
         nagents = 100
-        sim = po.Simulation(nagents, fitnessfunc=fitness)
+        sim = po.Simulation(nagents, shape=(2,), fitnessfunc=fitness)
         best, value = sim.run()
         self.assertAlmostEqual(best[0], 0.0, places=4)
         self.assertAlmostEqual(best[1], 0.0, places=4)

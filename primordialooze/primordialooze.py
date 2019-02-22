@@ -21,7 +21,6 @@ class Simulation:
     ```
     """
 
-
     def __init__(self, population, shape, fitnessfunc, *, seedfunc=None, selectionfunc=None,
                     crossoverfunc=None, mutationfunc=None, elitismfunc=None, nworkers=0,
                     max_agents_per_generation=None, min_agents_per_generation=None):
@@ -147,6 +146,64 @@ class Simulation:
         self._nworkers = nworkers
         self._max_agents_per_generation = population if max_agents_per_generation is None else max_agents_per_generation
         self._min_agents_per_generation = population if min_agents_per_generation is None else min_agents_per_generation
+
+    def run(self, niterations=100, fitness=None):
+        """
+        Runs the constructed simulation.
+
+        Either runs until `niterations` have passed, or runs until the best fitness is `fitness` or greater.
+        Returns the best agent along with its fitness.
+
+        # TODO: I will probably keep track of some statistics in this class too.
+
+        ## Keyword Args
+
+        - **niterations**: The number of iterations to run the simulation to. Defaults to 100. If `None`,
+                           `fitness` will be used (and must not be None). If both this and `fitness` is
+                           specified, we will stop as soon as one or the other condition is met.
+        - **fitness**: The fitness level to converge on. As soon as one or more agents have this fitness level
+                       or higher, the simulation will stop. Defaults to `None`. If `None` (the default),
+                       `niterations` will be used (and must not be None). If this and `niterations` is
+                       specified, we will stop as soon as one or the other condition is met.
+
+        ## Returns
+
+        - The most agent with the highest fitness score after the simulation ends.
+        - The fitness of this agent.
+        """
+        # First seed the gene pool
+        listagents = [self._seedfunc() for _ in range(self._initial_population_size)]
+        self._agents = np.array(listagents)
+
+        iteridx = 0
+        while not self._check_if_done(niterations, fitness, iteridx):
+            # Evaluate the gene pool
+            # TODO: Potentially use multiprocessing for this part
+
+            # Sort the evaluations along with the agents
+            # TODO
+
+            # Elitism to duplicate the elites
+            eliteratio = self._elitismfunc(iteridx)
+            assert eliteratio <= 1.0, "The elitism function must produce a value between 0.0 and 1.0"
+            assert eliteratio >= 0.0, "The elitism function must produce a value between 0.0 and 1.0"
+            nelites = eliteratio * self._agents.shape[0]
+            elites = np.copy(self._agents[0:nelites])
+
+            # Select breeding agents with selection function
+            self._agents = self._selectionfunc(self._agents, evaluations)
+
+            # Breed them using crossover
+            self._agents = self._crossoverfunc(self._agents)
+
+            # Mutate the results
+            self._agents = self._mutationfunc(self._agents)
+
+            # Construct the new gene pool from the mutation results and the elites
+            # TODO: Use min/max_agents_per_generation here
+
+            # Increment the generation index
+            iteridx += 1
 
     def _default_seedfunc(self):
         """
