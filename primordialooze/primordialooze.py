@@ -168,7 +168,7 @@ class Simulation:
 
         ## Returns
 
-        - The most agent with the highest fitness score after the simulation ends.
+        - The agent with the highest fitness score after the simulation ends.
         - The fitness of this agent.
         """
         # First seed the gene pool
