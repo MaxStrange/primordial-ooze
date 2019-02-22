@@ -220,10 +220,11 @@ class Simulation:
             remaining.remove(idx2)
 
             # Mate the two
-            # TODO
+            newa, newb = self._mate_two_agents(agents[idx1], agents[idx2])
 
             # Add the result to the list of agents we are going to return
-            created_agents.append(newagent)
+            created_agents.append(newa)
+            created_agents.append(newb)
 
             # Add to the set of so-far-mated
             so_far_mated.add(idx1)
@@ -259,3 +260,30 @@ class Simulation:
         10% specifically) will be re-injected into the next generation unchanged.
         """
         return 0.1
+
+    def _mate_two_agents(self, a1, a2):
+        """
+        Returns two new agents after mating a1 and a2 via 2-point crossover.
+        """
+        # Find a random index
+        i = np.random.choice(a1.shape[0])
+
+        # Find another random index
+        j = np.random.choice(a1.shape[0])
+
+        # Sort them
+        low, high = sorted([i, j])
+
+        # Take a1[0:low] and a2[0:low] and swap them
+        a1_up_to_low = a1[0:low]
+        a2_up_to_low = a2[0:low]
+        a1[0:low] = a2_up_to_low
+        a2[0:low] = a1_up_to_low
+
+        # Take a1[high:] and a2 [high:] and swap them
+        a1_from_high = a1[high:]
+        a2_from_high = a2[high:]
+        a1[high:] = a2_from_high
+        a2[high:] = a1_from_high
+
+        return a1, a2
