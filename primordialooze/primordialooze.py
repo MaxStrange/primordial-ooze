@@ -5,6 +5,7 @@ that are out there.
 
 See the README or the docstrings in this file for the documentation.
 """
+import math
 import multiprocessing
 import numpy as np
 
@@ -147,6 +148,9 @@ class Simulation:
         self._max_agents_per_generation = population if max_agents_per_generation is None else max_agents_per_generation
         self._min_agents_per_generation = population if min_agents_per_generation is None else min_agents_per_generation
 
+        if self._max_agents_per_generation < self._min_agents_per_generation:
+            raise ValueError("max_agents_per_generation {} is less than min_agents_per_generation {}".format(self._max_agents_per_generation, self._min_agents_per_generation))
+
     def run(self, niterations=100, fitness=None):
         """
         Runs the constructed simulation.
@@ -171,17 +175,25 @@ class Simulation:
         - The agent with the highest fitness score after the simulation ends.
         - The fitness of this agent.
         """
+        # Validate args
+        if niterations is None and fitness is None:
+            raise ValueError("`niterations` and `fitness` must not both be None.")
+
         # First seed the gene pool
         listagents = [self._seedfunc() for _ in range(self._initial_population_size)]
         self._agents = np.array(listagents)
+        self._fitnesses = np.zeros((self._initial_population_size,))
 
         iteridx = 0
         while not self._check_if_done(niterations, fitness, iteridx):
             # Evaluate the gene pool
-            # TODO: Potentially use multiprocessing for this part
+            self._evaluate_fitnesses()
 
-            # Sort the evaluations along with the agents
-            # TODO
+            # Sort the fitnesses along with the agents and reverse
+            # TODO: Test to make sure this works
+            sorted_indexes = np.argsort(self._fitnesses)[::-1]
+            self._fitnesses = self._fitnesses[sorted_indexes]
+            self._agents = self._agents[sorted_indexes]
 
             # Elitism to duplicate the elites
             eliteratio = self._elitismfunc(iteridx)
@@ -191,7 +203,7 @@ class Simulation:
             elites = np.copy(self._agents[0:nelites])
 
             # Select breeding agents with selection function
-            self._agents = self._selectionfunc(self._agents, evaluations)
+            self._agents = self._selectionfunc(self._agents, self._fitnesses)
 
             # Breed them using crossover
             self._agents = self._crossoverfunc(self._agents)
@@ -200,10 +212,54 @@ class Simulation:
             self._agents = self._mutationfunc(self._agents)
 
             # Construct the new gene pool from the mutation results and the elites
-            # TODO: Use min/max_agents_per_generation here
+            # TODO: Test this
+            np.append(self._agents, elites, axis=0)
+            np.random.shuffle(self._agents)
+            mx = min(self._max_agents_per_generation, self._agents.shape[0])
+            self._agents = self._agents[0:mx, :]
+            i = 0
+            while self._agents.shape[0] < self._min_agents_per_generation:
+                np.append(self._agents, self._agents[i])
+                i += 1
+                if i >= self._agents.shape[0]:
+                    i = 0
 
             # Increment the generation index
             iteridx += 1
+
+    def _check_if_done(self, niterations, fitness, iteridx):
+        """
+        Returns `True` if the simulation is complete, `False` if not.
+        """
+        if niterations is None:
+            niterations = math.inf
+        if fitness is None:
+            fitness = math.inf
+
+        # Check if the max fitness value is >= fitness
+        finished_by_fitness = np.max(self._fitnesses) >= fitness
+
+        # Check if iteridx + 1 >= niterations
+        finished_by_iterations = (iteridx + 1) >= niterations
+
+        return finished_by_fitness or finished_by_iterations
+
+    def _evaluate_fitnesses(self):
+        """
+        Applies the fitness function to every agent currently in the gene pool
+        and fills in self._fitnesses with this information.
+
+        Will use multiprocessing if this class was initialized with it.
+        """
+        # If self._nworkers != 0, we are using multiprocessing, otherwise we aren't
+        if self._nworkers == 0:
+            # Don't use multiprocessing
+            self._fitnesses = np.apply_along_axis(self._fitnessfunc, axis=1, arr=self._agents)
+        else:
+            # Make a pool
+            # Split up the agents
+            with multiprocessing.pool.Pool(self._nworkers) as p:
+                p.map(self._fitnessfunc, self._agents)
 
     def _default_seedfunc(self):
         """
@@ -213,7 +269,7 @@ class Simulation:
         # TODO: Test default function only produces individuals in range [-1.0, 1.0)
         return np.random.uniform(low=-1.0, high=1.0, size=self._shape)
 
-    def _default_selectionfunc(self, population, evaluations):
+    def _default_selectionfunc(self, population, fitnesses):
         """
         Default selection function for selecting agents allowed to breed to create the next generation.
         Simply takes the top 10% of the given population and return them.
