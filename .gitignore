@@ -102,3 +102,10 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# VS Code
+.vscode/
+
+# This is a library, so don't include the pipfile
+Pipfile
+Pipfile.lock
