@@ -137,12 +137,12 @@ class Simulation:
         nworkers = int(nworkers)
 
         # If we have negative max_agents, we actually want infinity
-        if max_agents_per_generation < 0:
+        if max_agents_per_generation is not None and max_agents_per_generation < 0:
             max_agents_per_generation = math.inf
 
         # We allow negative min_agents for compatibility with max_agents, but we just
         # interpret it as zero
-        if min_agents_per_generation < 0:
+        if min_agents_per_generation is not None and min_agents_per_generation < 0:
             min_agents_per_generation = 0
 
         self._initial_population_size = population
@@ -209,6 +209,7 @@ class Simulation:
             assert eliteratio >= 0.0, "The elitism function must produce a value between 0.0 and 1.0"
             nelites = int(eliteratio * self._agents.shape[0])
             elites = np.copy(self._agents[0:nelites])
+            elites = np.reshape(elites, (-1, self._agents.shape[1]))
 
             # Select breeding agents with selection function
             self._agents = self._selectionfunc(self._agents, self._fitnesses)
@@ -221,7 +222,6 @@ class Simulation:
 
             # Construct the new gene pool from the mutation results and the elites
             ## Append any elites that were held over
-            elites = np.expand_dims(elites, axis=0)
             np.append(self._agents, elites, axis=0)
 
             ## Take as many as max_agents (but don't take more than we actually have), but randomized
@@ -232,7 +232,7 @@ class Simulation:
             ## Now cycle through the agents, duplicating one at a time until we have at least min_agents
             i = 0
             while self._agents.shape[0] < self._min_agents_per_generation:
-                np.append(self._agents, self._agents[i])
+                self._agents = np.append(self._agents, np.expand_dims(self._agents[i], 0), axis=0)
                 i += 1
                 if i >= self._agents.shape[0]:
                     i = 0
@@ -314,6 +314,8 @@ class Simulation:
         without replacement until the next generation has `self._initial_population_size` agents in it
         unless self._elitismfunc == self._default_elitismfunc, in which case we only go to
         0.9 * `self._initial_population_size` agents (since 0.1 are kept by the elitism function).
+        Once all agents have been chosen, we do it again. We repeat this process until the next generation
+        has the right number of agents in it.
 
         Always mates at least one pair, unless the population is currently 1, in which case we simply
         return that agent unchanged.
@@ -329,9 +331,8 @@ class Simulation:
         if nagents < 2:
             nagents = 2
 
-        if nagents > agents.shape[0]:
+        if nagents == 1:
             # Only one agent, just return it
-            assert agents.shape[0] == 1
             return agents
 
         # Create agents by choosing two agents randomly and swapping two parts of them
