@@ -35,7 +35,8 @@ class Simulation:
                         in the initial generation, each of which is a Numpy Array of shape=`shape`.
                         They will be mutated according to `mutationfunc`, and evaluated each generation
                         by `fitnessfunc`.
-        - **shape**: The shape of each agent in the population. Must be a list-like.
+        - **shape**: The shape of each agent in the population. Must be a list-like. The shape of the agents
+                     must be a 1D array of whatever length like `(7,)`.
         - **fitnessfunc**: The function to use to evaluate the fitness of each agent in the generation.
                         Must have signature: `def fitnessfunc(agent) -> scalar float`. This function
                         will be evaluated on every single agent in the gene pool at each generation.
