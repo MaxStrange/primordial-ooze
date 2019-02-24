@@ -193,6 +193,24 @@ class TestOoze(unittest.TestCase):
         self.assertLessEqual(best[1], 1.0, msg=msg)
         self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
 
+    def test_parallelism_works_again(self):
+        """
+        Simply tests that we can converge while using multiprocessing on the fitness function.
+        """
+        # Note that there is an awful lot of overhead in creating a process pool,
+        # so it really only makes sense to do this for large numbers of agents
+        # and small numbers of iterations
+        nagents = 10000
+        fitfunc = ParallelizableCallableClass()
+        sim = po.Simulation(nagents, shape=(2,), fitnessfunc=fitfunc, nworkers=None)  # nworkers=None=ncpus
+        best, value = sim.run(niterations=100, fitness=4.99999)
+        msg = "(best, value): ({}, {})".format(best, value)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
+        self.assertLessEqual(best[0], 1.0, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
+        self.assertLessEqual(best[1], 1.0, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
+
     def test_min_num_agents(self):
         """
         Test that the final number of agents is not less than min_num_agents, even if mutations remove
@@ -232,6 +250,16 @@ def parallelizable_function(agent):
     y = agent[1]
     return (-1.2 * x**2) - (0.75 * y**2) + 5.0
 
+class ParallelizableCallableClass:
+    def __init__(self):
+        self.a = -1.2
+        self.b = 0.75
+        self.c = 5.0
+
+    def __call__(self, agent):
+        x = agent[0]
+        y = agent[1]
+        return (self.a * x**2) - (self.b * y**2) + self.c
 
 if __name__ == '__main__':
     unittest.main()
