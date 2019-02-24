@@ -213,6 +213,7 @@ class Simulation:
 
             # Select breeding agents with selection function
             self._agents = self._selectionfunc(self._agents, self._fitnesses)
+            assert len(self._agents.shape) == 2, "Selection function must return an ndarray of shape (nagents, agent_length), but has shape: {}".format(self._agents.shape)
 
             # Breed them using crossover
             self._agents = self._crossoverfunc(self._agents)
@@ -289,7 +290,6 @@ class Simulation:
         Default seed function to create the first generation of agents. Each time this is called, it creates
         a new agent from uniform random of shape `self._shape` over the values[-1.0, 1.0).
         """
-        # TODO: Test default function only produces individuals in range [-1.0, 1.0)
         return np.random.uniform(low=-1.0, high=1.0, size=self._shape)
 
     def _default_selectionfunc(self, population, fitnesses):
@@ -301,7 +301,6 @@ class Simulation:
 
         This is guaranteed to take at least one agent.
         """
-        # TODO: Test default function takes the top ten percent (and not just some random ten percent)
         tenpercent = int(population.shape[0] * 0.1)
         if tenpercent < 1:
             tenpercent = 1
@@ -320,8 +319,6 @@ class Simulation:
         Always mates at least one pair, unless the population is currently 1, in which case we simply
         return that agent unchanged.
         """
-        # TODO: Test that the crossover function samples without replacement
-        # TODO: Test that the crossover function creates the right number of agents
         nagents = self._initial_population_size
 
         # Determine how many agents to mate/create (we create one agent per parent - two per pair)
@@ -331,8 +328,8 @@ class Simulation:
         if nagents < 2:
             nagents = 2
 
-        if nagents == 1:
-            # Only one agent, just return it
+        if agents.shape[0] < 2:
+            # We can't do much with less than 2 agents
             return agents
 
         # Create agents by choosing two agents randomly and swapping two parts of them
