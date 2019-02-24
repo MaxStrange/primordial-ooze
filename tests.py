@@ -80,5 +80,48 @@ class TestOoze(unittest.TestCase):
         # We are just testing to make sure this doesn't crash. Convergence with this selection function would
         # take forever
 
+    def test_crossoverfunction(self):
+        """
+        Test passing in our own crossover function. Our custom function does nothing at all, so we rely
+        on elitism and mutations to reach convergence.
+        """
+        def xover(agents):
+            return agents
+
+        shape = (2,)
+        nagents = 1000
+        sim = po.Simulation(nagents, shape=shape, fitnessfunc=self.fitness, crossoverfunc=xover)
+        best, value = sim.run(niterations=1000, fitness=4.99999)
+        msg = "(best, value): ({}, {})".format(best, value)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
+        self.assertLessEqual(best[0], 1.0, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
+        self.assertLessEqual(best[1], 1.0, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=4, msg=msg)
+
+    def test_mutationfunction(self):
+        """
+        Test passing in our own mutation function. Our custom function mutates randomly chosen
+        agents by replacing them with uniform random from [-1.0, 1.0).
+        """
+        def mutate(agents):
+            nmutants = int(0.1 * agents.shape[0])
+            mutants = np.random.uniform(-1.0, 1.0, size=(nmutants, agents.shape[1]))
+            np.random.shuffle(agents)
+            agents[0:nmutants, :] = mutants[:, :]
+            return agents
+
+        shape = (2,)
+        nagents = 1000
+        sim = po.Simulation(nagents, shape=shape, fitnessfunc=self.fitness, mutationfunc=mutate)
+        best, value = sim.run(niterations=1000, fitness=4.99999)
+        msg = "(best, value): ({}, {})".format(best, value)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
+        self.assertLessEqual(best[0], 1.0, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
+        self.assertLessEqual(best[1], 1.0, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=4, msg=msg)
+
+
 if __name__ == '__main__':
     unittest.main()

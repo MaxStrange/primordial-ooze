@@ -217,9 +217,11 @@ class Simulation:
 
             # Breed them using crossover
             self._agents = self._crossoverfunc(self._agents)
+            assert len(self._agents.shape) == 2, "Crossover function must return an ndarray of shape (nagents, agent_length), but has shape: {}".format(self._agents.shape)
 
             # Mutate the results
             self._agents = self._mutationfunc(self._agents)
+            assert len(self._agents.shape) == 2, "Mutation function must return an ndarray of shape (nagents, agent_length), but has shape: {}".format(self._agents.shape)
 
             # Construct the new gene pool from the mutation results and the elites
             ## Append any elites that were held over
