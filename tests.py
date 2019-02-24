@@ -34,11 +34,11 @@ class TestOoze(unittest.TestCase):
         sim = po.Simulation(nagents, shape=(2,), fitnessfunc=self.fitness)
         best, value = sim.run(niterations=10000, fitness=4.99999)
         msg = "(best, value): ({}, {})".format(best, value)
-        self.assertGreaterEqual(best[0], -0.1, msg=msg)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
         self.assertLessEqual(best[0], 1.0, msg=msg)
-        self.assertGreaterEqual(best[1], -0.1, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
         self.assertLessEqual(best[1], 1.0, msg=msg)
-        self.assertAlmostEqual(value, 5.0, places=4, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
 
     def test_seedfunction(self):
         """
@@ -64,7 +64,7 @@ class TestOoze(unittest.TestCase):
         self.assertLessEqual(best[0], 1.0, msg=msg)
         self.assertGreaterEqual(best[1], -1.0, msg=msg)
         self.assertLessEqual(best[1], 1.0, msg=msg)
-        self.assertAlmostEqual(value, 5.0, places=4, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
 
     def test_selectionfunction_take_one(self):
         """
@@ -97,7 +97,7 @@ class TestOoze(unittest.TestCase):
         self.assertLessEqual(best[0], 1.0, msg=msg)
         self.assertGreaterEqual(best[1], -1.0, msg=msg)
         self.assertLessEqual(best[1], 1.0, msg=msg)
-        self.assertAlmostEqual(value, 5.0, places=4, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
 
     def test_mutationfunction(self):
         """
@@ -120,7 +120,117 @@ class TestOoze(unittest.TestCase):
         self.assertLessEqual(best[0], 1.0, msg=msg)
         self.assertGreaterEqual(best[1], -1.0, msg=msg)
         self.assertLessEqual(best[1], 1.0, msg=msg)
-        self.assertAlmostEqual(value, 5.0, places=4, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
+
+    def test_no_elitism(self):
+        """
+        Test having no elitism.
+        """
+        def elitism(idx):
+            return 0.0
+
+        shape = (2,)
+        nagents = 1000
+        sim = po.Simulation(nagents, shape=shape, fitnessfunc=self.fitness, elitismfunc=elitism)
+        best, value = sim.run(niterations=1000, fitness=4.99999)
+        msg = "(best, value): ({}, {})".format(best, value)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
+        self.assertLessEqual(best[0], 1.0, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
+        self.assertLessEqual(best[1], 1.0, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
+
+    def test_decaying_elitism(self):
+        """
+        Test having an elitism function that decays to nothing over time.
+        """
+        def elitism(idx):
+            return -1.0 * np.tanh(idx) + 1.0
+
+        shape = (2,)
+        nagents = 1000
+        sim = po.Simulation(nagents, shape=shape, fitnessfunc=self.fitness, elitismfunc=elitism)
+        best, value = sim.run(niterations=1000, fitness=4.99999)
+        msg = "(best, value): ({}, {})".format(best, value)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
+        self.assertLessEqual(best[0], 1.0, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
+        self.assertLessEqual(best[1], 1.0, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
+
+    def test_ramping_elitism(self):
+        """
+        Test using an elitism function that ramps up from nothing to most of the population.
+        """
+        def elitism(idx):
+            return np.tanh(idx)
+
+        shape = (2,)
+        nagents = 1000
+        sim = po.Simulation(nagents, shape=shape, fitnessfunc=self.fitness, elitismfunc=elitism)
+        best, value = sim.run(niterations=1000, fitness=4.99999)
+        msg = "(best, value): ({}, {})".format(best, value)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
+        self.assertLessEqual(best[0], 1.0, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
+        self.assertLessEqual(best[1], 1.0, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
+
+    def test_parallelism_works(self):
+        """
+        Simply tests that we can converge while using multiprocessing on the fitness function.
+        """
+        # Note that there is an awful lot of overhead in creating a process pool,
+        # so it really only makes sense to do this for large numbers of agents
+        # and small numbers of iterations
+        nagents = 10000
+        sim = po.Simulation(nagents, shape=(2,), fitnessfunc=parallelizable_function, nworkers=None)  # nworkers=None=ncpus
+        best, value = sim.run(niterations=100, fitness=4.99999)
+        msg = "(best, value): ({}, {})".format(best, value)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
+        self.assertLessEqual(best[0], 1.0, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
+        self.assertLessEqual(best[1], 1.0, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
+
+    def test_min_num_agents(self):
+        """
+        Test that the final number of agents is not less than min_num_agents, even if mutations remove
+        a bunch from the population each time.
+        """
+        def mutate(agents):
+            """We just return the first 3 agents"""
+            return agents[0:3, :]
+
+        shape = (2,)
+        nagents = 1000
+        sim = po.Simulation(nagents, shape=shape, fitnessfunc=self.fitness, mutationfunc=mutate, min_agents_per_generation=75)
+        _, _ = sim.run(niterations=1000, fitness=4.99999)
+        self.assertEqual(sim._agents.shape[0], 75)
+
+    def test_max_num_agents(self):
+        """
+        Test that the final number of agents is not greater than max_num_agents, even if mutations add
+        new agents each time.
+        """
+        def mutate(agents):
+            """Add a new agent each time"""
+            agents = np.append(agents, np.array([[1, 2]]), axis=0)
+            return agents
+
+        shape = (2,)
+        nagents = 1000
+        sim = po.Simulation(nagents, shape=shape, fitnessfunc=self.fitness, mutationfunc=mutate, max_agents_per_generation=75, min_agents_per_generation=25)
+        _, _ = sim.run(niterations=1000, fitness=4.99999)
+        self.assertEqual(sim._agents.shape[0], 75)
+
+def parallelizable_function(agent):
+    """
+    This is an upside-down parabola in 2D with max value at (z = (x, y) = 5 = (0, 0)).
+    """
+    x = agent[0]
+    y = agent[1]
+    return (-1.2 * x**2) - (0.75 * y**2) + 5.0
 
 
 if __name__ == '__main__':
