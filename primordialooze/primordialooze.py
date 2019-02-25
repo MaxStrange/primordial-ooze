@@ -15,10 +15,20 @@ class Simulation:
 
     ```python
     import primordialooze as po
+    import pandas
+    import matplotlib.pyplot
 
     sim = po.Simulation(nagents, shape, fitnessfunction)
     bestagent, fitness = sim.run()
-    print(sim.results)
+
+    # Dump and plot
+    fname = "stats.csv"
+    sim.dump_history_csv(fname)
+
+    df = pandas.read_csv(fname)
+    df = df.drop(['GenerationIndex'], axis=1)
+    df.plot()
+    plt.show()
     ```
     """
 
@@ -166,7 +176,7 @@ class Simulation:
         Saves this simulation's statistics as a CSV file at `fpath` in the form:
 
         ```
-        # Generation Index, Maximum, Minimum, Average
+        Generation Index, Maximum, Minimum, Average
         ```
         """
         with open(fpath, 'w') as f:

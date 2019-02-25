@@ -10,10 +10,21 @@ A GA simulation. The general workflow for this is:
 
 ```python
 import primordialooze as po
+import pandas
+import matplotlib.pyplot
 
 sim = po.Simulation(nagents, shape, fitnessfunction)
 bestagent, fitness = sim.run()
 print("The agent {} has the best fitness, which is: {}".format(bestagent, fitness))
+
+# Dump and plot
+fname = "stats.csv"
+sim.dump_history_csv(fname)
+
+df = pandas.read_csv(fname)
+df = df.drop(['GenerationIndex'], axis=1)
+df.plot()
+plt.show()
 ```
 
 
