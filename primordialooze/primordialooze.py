@@ -160,7 +160,7 @@ class Simulation:
         if self._max_agents_per_generation < self._min_agents_per_generation:
             raise ValueError("max_agents_per_generation {} is less than min_agents_per_generation {}".format(self._max_agents_per_generation, self._min_agents_per_generation))
 
-    def run(self, niterations=100, fitness=None):
+    def run(self, niterations=100, fitness=None, printprogress=True):
         """
         Runs the constructed simulation.
 
@@ -178,6 +178,7 @@ class Simulation:
                            or higher, the simulation will stop. Defaults to `None`. If `None` (the default),
                            `niterations` will be used (and must not be None). If this and `niterations` is
                            specified, we will stop as soon as one or the other condition is met.
+        - **printprogress**: If `True` (the default), we will print a progress indication after each generation.
 
         ## Returns
 
@@ -194,7 +195,7 @@ class Simulation:
         self._fitnesses = np.zeros((self._initial_population_size,))
 
         iteridx = 0
-        while not self._check_if_done(niterations, fitness, iteridx):
+        while not self._check_if_done(niterations, fitness, iteridx, printprogress):
             # Evaluate the gene pool
             self._fitnesses = self._evaluate_fitnesses()
 
@@ -248,10 +249,13 @@ class Simulation:
         self._fitnesses = self._fitnesses[sorted_indexes]
         self._agents = self._agents[sorted_indexes]
 
+        if printprogress:
+            print()
+
         # Return the fittest agent and its fitness score
         return self._agents[0, :], self._fitnesses[0]
 
-    def _check_if_done(self, niterations, fitness, iteridx):
+    def _check_if_done(self, niterations, fitness, iteridx, prnt):
         """
         Returns `True` if the simulation is complete, `False` if not.
         """
@@ -266,6 +270,22 @@ class Simulation:
 
         # Check if iteridx + 1 >= niterations
         finished_by_iterations = (iteridx + 1) >= niterations
+
+        # Now print an update if the user wants
+        if prnt:
+            maxsigns = 20
+            if niterations != math.inf:
+                # We are interested in niterations
+                fraction_complete = iteridx / niterations
+            else:
+                # We are trying to converge on a particular value
+                fraction_complete = np.max(self._fitnesses) / fitness
+            npounds = int(fraction_complete * maxsigns)
+            ndots = maxsigns - npounds
+            msg = "Progress: [{}{}] Best Fitness: {} Worst Fitness: {}".format(
+                "#" * npounds, "." * ndots, np.max(self._fitnesses), np.min(self._fitnesses)
+            )
+            print(msg, end="\r")
 
         return finished_by_fitness or finished_by_iterations
 

@@ -13,7 +13,7 @@ import primordialooze as po
 
 sim = po.Simulation(nagents, shape, fitnessfunction)
 bestagent, fitness = sim.run()
-print(sim.results)
+print("The agent {} has the best fitness, which is: {}".format(bestagent, fitness))
 ```
 
 
@@ -34,12 +34,13 @@ since the values for these will change dramatically depending on the problem.
                 in the initial generation, each of which is a Numpy Array of shape=`shape`.
                 They will be mutated according to `mutationfunc`, and evaluated each generation
                 by `fitnessfunc`.
-- **shape**: The shape of each agent in the population. Must be a list-like.
+- **shape**: The shape of each agent in the population. Must be a list-like. The shape of the agents
+                must be a 1D array of whatever length like `(7,)`.
 - **fitnessfunc**: The function to use to evaluate the fitness of each agent in the generation.
-                Must have signature: `def fitnessfunc(agent) -> scalar float`. This function
+                Must have signature: `fitnessfunc(agent) -> scalar float`. This function
                 will be evaluated on every single agent in the gene pool at each generation.
-                If this function is slow, it probably makes sense to use multiprocessing.
-                See `nwokers`.
+                If this function is slow, it probably makes sense to use multiprocessing, unless the
+                gene pool is quite small. See `nworkers`.
 
 #### Keyword Args
 
@@ -47,23 +48,23 @@ These arguments contain (mostly) sensible defaults, but you should definitely ma
 defaults work for you. You will almost certainly want to change some of these to fit your problem.
 
 - **seedfunc**: The function to use to create the first generation of agents. The function must have
-                the signature `def seedfunc() -> agent of shape 'shape'`. We call this function
-                `population` times. When `None`, defaults to uniform random
-                over the range [-1.0, 1.0) in each dimension.
+                    the signature `seedfunc() -> agent of shape 'shape'`. We call this function
+                    `population` times. When `None`, defaults to uniform random
+                    over the range [-1.0, 1.0) in each dimension.
 - **selectionfunc**: The function to use to select the agents that are allowed to breed to create the
-                    next generation. Signature must be `def selectionfunc(population, evaluations) -> selected_agents`,
-                    where `population` is an n-dimensional array of shape (nagents, *agent_shape),
+                    next generation. Signature must be `selectionfunc(population, evaluations) -> selected_agents`,
+                    where `population` is an n-dimensional array of shape (nagents, agent_length),
                     `evaluations` is an array of shape (nagents,); `evaluations[i]` contains
-                    the fitness value for `population[i]`; `selected_agents` is an n-dimensional array
-                    of shape (nagents_selected, *agent_shape), which must contain the selected agents.
-                    `population` and `evaluations` are pre-sorted so that `population[0]`, corresponds
+                    the fitness value for `population[i, :]`; `selected_agents` is an n-dimensional array
+                    of shape (nagents_selected, agent_length), which must contain the selected agents.
+                    `population` and `evaluations` are pre-sorted so that `population[0, :]`, corresponds
                     to `evalutaion[0]` and has the highest evaluation value. Agents which are not selected
                     are simply discarded, i.e., they will not appear in the next generation (unless randomly
-                    created as part of crossover/mutation).
-                    When `None`, defaults to selecting the top ten percent.
+                    created again as part of crossover/mutation).
+                    If `None`, defaults to selecting the top ten percent.
 - **crossoverfunc**: Crossover function to use. Must have signature `crossoverfunc(agents) -> new_agents`,
-                    where `agents` is an n-dimensional array of shape (nselected_agents, *agent_shape),
-                    and where `new_agents` must be an n-dimensional array of shape (nagents, *agent_shape).
+                    where `agents` is an n-dimensional array of shape (nselected_agents, agent_length),
+                    and where `new_agents` must be an n-dimensional array of shape (nagents, agent_length).
                     This function is applied after the selection function is used to determine which
                     agents will enter the new generation and this function is used exclusively on those
                     selected agents. Typically, `new_agents` will constitute the entirety of the new generation,
@@ -74,24 +75,23 @@ defaults work for you. You will almost certainly want to change some of these to
                     breeding agents until `population` agents (or, if `elitismfunc` is None, `0.9 * population`).
 - **mutationfunc**: The function to use to apply mutations to the gene pool. The signature must be
                     `mutationfunc(agents) -> new_agents`, where `agents` is the value returned from
-                    `crossoverfunc` and `new_agents` must be an n-dimensional array of shape (nagents, *agent_shape).
+                    `crossoverfunc` and `new_agents` must be an n-dimensional array of shape (nagents, agent_length).
                     This function is applied to the result of `crossoverfunc`.
-                    When `None`, defaults to applying a random value to each value in a 0.05 of the agents,
-                    where the random value is drawn from a Gaussian distribution of mean = the value being mutated
+                    When `None`, defaults to setting each value in 0.05 of the agents to a random value,
+                    where the random value is drawn from a Gaussian distribution of mean = the value being replaced
                     and stdev = 0.25.
 - **elitismfunc**: A function of signature `elitismfunc(generation_index) -> float in range [0.0, 1.0]`.
-                This function takes the index of the generation (0 for the first generation, 1 for the second, etc.)
-                and returns the fraction of top-performers to hold over as-is to the next generation.
-                Note that these agents are not removed from arguments sent to selectionfunc. This means that
-                selectionfunc will also get copies of the elites. The elites are duplicated and then, after the new
-                generation is created via the selectionfunc -> crossoverfunc -> mutationfunc pipeline, they are
-                reintroduced into the gene pool. This means that if the above pipeline generates 100 agents
-                and the elitism is set to take 10, the new generation will be composed of 110 agents. If this
-                is confusing, see `max_agents_per_generation` and `min_agents_per_generation`.
-                When `None`, defaults to a function that simply returns 0.1 (or 10%) of the gene pool regardless of the
-                generation.
-- **nworkers**: The number of processes to use to parallelize the various functions. This will default to 0, which will
-                mean no parallelism at all. `None` will use the number of cores. Otherwise, should be a positive integer.
+                    This function takes the index of the generation (0 for the first generation, 1 for the second, etc.)
+                    and returns the fraction of top-performers to hold over as-is to the next generation.
+                    The elites are duplicated and then, after the new
+                    generation is created via the selectionfunc -> crossoverfunc -> mutationfunc pipeline, they are
+                    reintroduced into the gene pool. This means that if the above pipeline generates 100 agents
+                    and the elitism is set to take 10, the new generation will be composed of 110 agents. If this
+                    is confusing, see `max_agents_per_generation` and `min_agents_per_generation`.
+                    When `None`, defaults to a function that simply returns 0.1 (or 10%) of the gene pool regardless of the
+                    generation.
+- **nworkers**: The number of processes to use to parallelize the fitness function. This will default to 0, which will
+                    mean no parallelism at all. `None` will use the number of cores. Otherwise, should be a positive integer.
 - **max_agents_per_generation**: The maximum agents to allow into a generation. If the selection, crossover, mutation,
                                 and elitism functions are not handled properly, it is possible for the number of
                                 agents to change per generation. While this may be desired in some circumstances, it
@@ -104,11 +104,12 @@ defaults work for you. You will almost certainly want to change some of these to
                                 and elitism functions are not handled properly, it is possible for the number of
                                 agents to change per generation. While this may be desired in some circumstances, it
                                 is often not. If this value is negative or zero, we will allow the generations
-                                    to shrink to zero, after which the simulation will stop. If it is nonzero, after selection,
-                                    crossover, mutation, and elitism, we will cycle through the candidate agents in random
-                                    order, duplicating them until this value is met. Note that we attempt to spread out the
-                                    duplication evenly amongst all candidates.
-                                    This value defaults to `None`, which means we use `population` as the min.
+                                to shrink to zero, after which the simulation will stop. If it is nonzero, after selection,
+                                crossover, mutation, and elitism, we will cycle through the candidate agents in random
+                                order, duplicating them until this value is met. Note that we attempt to spread out the
+                                duplication evenly amongst all candidates.
+                                This value defaults to `None`, which means we use `population` as the min.
+
 
 ### run
 
@@ -127,9 +128,10 @@ Returns the best agent along with its fitness.
                     `fitness` will be used (and must not be None). If both this and `fitness` is
                     specified, we will stop as soon as one or the other condition is met.
 - **fitness**: The fitness level to converge on. As soon as one or more agents have this fitness level
-                or higher, the simulation will stop. Defaults to `None`. If `None` (the default),
-                `niterations` will be used (and must not be None). If this and `niterations` is
-                specified, we will stop as soon as one or the other condition is met.
+                    or higher, the simulation will stop. Defaults to `None`. If `None` (the default),
+                    `niterations` will be used (and must not be None). If this and `niterations` is
+                    specified, we will stop as soon as one or the other condition is met.
+- **printprogress**: If `True` (the default), we will print a progress indication after each generation.
 
 #### Returns
 
