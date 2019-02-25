@@ -156,9 +156,23 @@ class Simulation:
         self._nworkers = nworkers
         self._max_agents_per_generation = population if max_agents_per_generation is None else max_agents_per_generation
         self._min_agents_per_generation = population if min_agents_per_generation is None else min_agents_per_generation
+        self.statistics = []
 
         if self._max_agents_per_generation < self._min_agents_per_generation:
             raise ValueError("max_agents_per_generation {} is less than min_agents_per_generation {}".format(self._max_agents_per_generation, self._min_agents_per_generation))
+
+    def dump_history_csv(self, fpath):
+        """
+        Saves this simulation's statistics as a CSV file at `fpath` in the form:
+
+        ```
+        # Generation Index, Maximum, Minimum, Average
+        ```
+        """
+        with open(fpath, 'w') as f:
+            f.write("GenerationIndex, Maximum, Minimum, Average\n")
+            for s in self.statistics:
+                f.write("{}, {}, {}, {}\n".format(s.generationidx, s.maxval, s.minval, s.avgval))
 
     def run(self, niterations=100, fitness=None, printprogress=True):
         """
@@ -166,8 +180,6 @@ class Simulation:
 
         Either runs until `niterations` have passed, or runs until the best fitness is `fitness` or greater.
         Returns the best agent along with its fitness.
-
-        # TODO: I will probably keep track of some statistics in this class too.
 
         ## Keyword Args
 
@@ -203,6 +215,13 @@ class Simulation:
             sorted_indexes = np.argsort(self._fitnesses)[::-1]
             self._fitnesses = self._fitnesses[sorted_indexes]
             self._agents = self._agents[sorted_indexes]
+
+            # Calculate statistics
+            maxval = np.max(self._fitnesses)
+            minval = np.min(self._fitnesses)
+            avgval = np.mean(self._fitnesses)
+            stats = Statistics(maxval, minval, avgval, iteridx)
+            self.statistics.append(stats)
 
             # Elitism to duplicate the elites
             eliteratio = self._elitismfunc(iteridx)
@@ -443,3 +462,27 @@ class Simulation:
         a2[high:] = a1_from_high
 
         return a1, a2
+
+class Statistics:
+    def __init__(self, maxval, minval, avgval, generationidx):
+        self.maxval = maxval
+        self.minval = minval
+        self.avgval = avgval
+        self.generationidx = generationidx
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    import os
+    import pandas
+
+    nagents = 1000
+    sim = Simulation(nagents, shape=(2,), fitnessfunc=lambda agent: (-1.2* agent[0]**2) - (0.75 * agent[1]**2) + 5.0)
+    best, value = sim.run(niterations=10000, fitness=4.99999)
+    msg = "(best, value): ({}, {})".format(best, value)
+    fname = "stats.csv"
+    sim.dump_history_csv(fname)
+
+    df = pandas.read_csv(fname)
+    df = df.drop(['GenerationIndex'], axis=1)
+    df.plot()
+    plt.show()

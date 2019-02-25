@@ -2,6 +2,7 @@
 Tests for the PrimordialOoze library.
 """
 import numpy as np
+import os
 import primordialooze as po
 import unittest
 
@@ -39,6 +40,23 @@ class TestOoze(unittest.TestCase):
         self.assertGreaterEqual(best[1], -1.0, msg=msg)
         self.assertLessEqual(best[1], 1.0, msg=msg)
         self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
+
+    def test_dump_csv(self):
+        """
+        Test that we can solve a simple 2D upside-down parabola problem.
+        """
+        nagents = 10000
+        sim = po.Simulation(nagents, shape=(2,), fitnessfunc=self.fitness)
+        best, value = sim.run(niterations=10000, fitness=4.99999)
+        msg = "(best, value): ({}, {})".format(best, value)
+        self.assertGreaterEqual(best[0], -1.0, msg=msg)
+        self.assertLessEqual(best[0], 1.0, msg=msg)
+        self.assertGreaterEqual(best[1], -1.0, msg=msg)
+        self.assertLessEqual(best[1], 1.0, msg=msg)
+        self.assertAlmostEqual(value, 5.0, places=3, msg=msg)
+        fname = "stats.csv"
+        sim.dump_history_csv(fname)
+        os.remove(fname)
 
     def test_seedfunction(self):
         """
