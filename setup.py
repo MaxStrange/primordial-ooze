@@ -5,7 +5,7 @@ with open("README.md") as f:
 
 setup(
     name="primordialooze",
-    version="0.3.0",
+    version="0.4.0",
     author="Max Strange",
     author_email="maxfieldstrange@gmail.com",
     description="Super simple genetic algorithm library for Python.",

@@ -167,6 +167,7 @@ class Simulation:
         self._max_agents_per_generation = population if max_agents_per_generation is None else max_agents_per_generation
         self._min_agents_per_generation = population if min_agents_per_generation is None else min_agents_per_generation
         self.statistics = []
+        self.best_agents = []
 
         if self._max_agents_per_generation < self._min_agents_per_generation:
             raise ValueError("max_agents_per_generation {} is less than min_agents_per_generation {}".format(self._max_agents_per_generation, self._min_agents_per_generation))
@@ -227,11 +228,7 @@ class Simulation:
             self._agents = self._agents[sorted_indexes]
 
             # Calculate statistics
-            maxval = np.max(self._fitnesses)
-            minval = np.min(self._fitnesses)
-            avgval = np.mean(self._fitnesses)
-            stats = Statistics(maxval, minval, avgval, iteridx)
-            self.statistics.append(stats)
+            self._save_stats(iteridx)
 
             # Elitism to duplicate the elites
             eliteratio = self._elitismfunc(iteridx)
@@ -273,16 +270,26 @@ class Simulation:
             # Increment the generation index
             iteridx += 1
 
-        # Sort the fitnesses along with the agents and reverse
-        sorted_indexes = np.argsort(self._fitnesses)[::-1]
-        self._fitnesses = self._fitnesses[sorted_indexes]
-        self._agents = self._agents[sorted_indexes]
-
         if printprogress:
             print()
 
         # Return the fittest agent and its fitness score
-        return self._agents[0, :], self._fitnesses[0]
+        return self.best_agents[-1], self.statistics[-1].maxval
+
+    def _save_stats(self, iteridx):
+        """
+        Saves the statistics from this generation.
+        """
+        maxval = np.max(self._fitnesses)
+        minval = np.min(self._fitnesses)
+        avgval = np.mean(self._fitnesses)
+        stats = Statistics(maxval, minval, avgval, iteridx)
+        self.statistics.append(stats)
+
+        # Sort the fitnesses along with the agents and reverse
+        sorted_indexes = np.argsort(self._fitnesses)[::-1]
+        sorted_agents = self._agents[sorted_indexes]
+        self.best_agents.append(sorted_agents[0, :])
 
     def _check_if_done(self, niterations, fitness, iteridx, prnt):
         """
@@ -297,8 +304,8 @@ class Simulation:
         # Check if the max fitness value is >= fitness
         finished_by_fitness = np.max(self._fitnesses) >= fitness
 
-        # Check if iteridx + 1 >= niterations
-        finished_by_iterations = (iteridx + 1) >= niterations
+        # Check if iteridx >= niterations
+        finished_by_iterations = iteridx >= niterations
 
         # Now print an update if the user wants
         if prnt:

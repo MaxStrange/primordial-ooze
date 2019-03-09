@@ -260,6 +260,31 @@ class TestOoze(unittest.TestCase):
         _, _ = sim.run(niterations=1000, fitness=4.99999)
         self.assertEqual(sim._agents.shape[0], 75)
 
+    def test_statistics(self):
+        """
+        Test that we keep stats.
+        """
+        nagents = 100
+        sim = po.Simulation(nagents, shape=(2,), fitnessfunc=self.fitness)
+        best, value = sim.run(niterations=531, fitness=None)
+        bestagents = sim.best_agents
+        self.assertEqual(len(bestagents), 531)
+        self.assertEqual(best.shape, bestagents[0].shape)
+        for agent in bestagents:
+            self.assertEqual(agent.shape, best.shape)
+        for v1, v2 in zip(best, bestagents[-1]):
+            self.assertAlmostEqual(v1, v2, places=2)
+
+        self.assertAlmostEqual(value, sim.statistics[-1].maxval, places=2)
+        lastidx = 0
+        for stats in sim.statistics:
+            self.assertGreaterEqual(stats.maxval, stats.avgval)
+            self.assertGreaterEqual(stats.maxval, stats.minval)
+            self.assertGreaterEqual(stats.avgval, stats.minval)
+            if stats.generationidx != 0:
+                self.assertEqual(stats.generationidx, lastidx + 1)
+            lastidx = stats.generationidx
+
 def parallelizable_function(agent):
     """
     This is an upside-down parabola in 2D with max value at (z = (x, y) = 5 = (0, 0)).

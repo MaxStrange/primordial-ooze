@@ -27,6 +27,18 @@ df.plot()
 plt.show()
 ```
 
+## Statistics
+
+The Simulation class stores a list `statistics`, which contains instances of the class `Statistics`.
+The `Statistics` class contains the following properties:
+
+- `generationidx`, which is the zero-based index indicating which generation this `Statistics` instance is for.
+- `maxval`, which is the maximum fitness score for this generation.
+- `minval`, which is the minimum fitness score for this generation.
+- `avgval`, which is the average fitness score for this generation.
+
+The Simulation class also stores a list `best_agents`, which contains the best agent at each generation.
+
 
 ### __init__
 
