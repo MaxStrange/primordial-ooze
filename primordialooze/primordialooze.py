@@ -433,7 +433,7 @@ class Simulation:
         Applies Gaussian noise to each value in 5% of agents, where mean=value and stdev=0.25.
         Always mutates at least one individual.
         """
-        # TODO: Test that we always mutate at least on agent.
+        # TODO: Test that we always mutate at least one agent.
         # TODO: Test that the underlying distribution for a bunch of mutated points is gaussian, mean=x, stdev=0.25.
         nagents = int(0.05 * agents.shape[0])
         if nagents < 1:
